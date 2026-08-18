@@ -7,6 +7,7 @@ sealed class ActionStep {
     data class InputNumber(val value: String) : ActionStep()
     object ClickNumericField : ActionStep()
     data class ClickMostRecentEntry(val category: String) : ActionStep()
+    object DismissKeyboard : ActionStep()
 }
 
 object PendingActionQueue {

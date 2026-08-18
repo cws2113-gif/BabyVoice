@@ -32,6 +32,7 @@ class BabyTimeAccessibilityService : AccessibilityService() {
             is ActionStep.InputNumber -> inputNumberIntoFirstEditText(root, step.value)
             is ActionStep.ClickNumericField -> clickFirstNumericField(root)
             is ActionStep.ClickMostRecentEntry -> clickSecondTopmostWithText(root, step.category)
+            is ActionStep.DismissKeyboard -> dismissKeyboardIfVisible()
         }
 
         if (!success) {
@@ -123,6 +124,14 @@ class BabyTimeAccessibilityService : AccessibilityService() {
 
         val secondTopmost = candidates.sortedBy { it.first }[1]
         return secondTopmost.second.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    }
+
+    private fun dismissKeyboardIfVisible(): Boolean {
+        val imeVisible = windows?.any { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD } ?: false
+        if (imeVisible) {
+            performGlobalAction(GLOBAL_ACTION_BACK)
+        }
+        return true
     }
 
     private fun inputNumberIntoFirstEditText(root: AccessibilityNodeInfo, value: String): Boolean {

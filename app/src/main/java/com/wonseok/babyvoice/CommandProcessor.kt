@@ -74,6 +74,7 @@ object CommandProcessor {
             if (value != null) {
                 PendingActionQueue.push(ActionStep.ClickNumericField)
                 PendingActionQueue.push(ActionStep.InputNumber(value))
+                PendingActionQueue.push(ActionStep.DismissKeyboard)
             }
         }
         PendingActionQueue.push(ActionStep.ClickText("저장"))
