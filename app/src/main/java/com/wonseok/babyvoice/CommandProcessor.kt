@@ -4,17 +4,10 @@ import android.content.Context
 import android.util.Log
 import android.widget.Toast
 
-/**
- * 음성 텍스트를 파싱해서 BabyTime 앱 실행 + 접근성 서비스 액션 큐를 만드는 공통 로직.
- * MainActivity(전체 화면)와 QuickListenActivity(잠금화면용 빠른 기록) 둘 다 이걸 쓴다.
- */
 object CommandProcessor {
 
     private const val BABYTIME_PACKAGE = "yducky.application.babytime"
 
-    /**
-     * @return 사람이 읽을 수 있는 결과 요약 텍스트 (성공/실패 메시지), null이면 처리 실패
-     */
     fun process(context: Context, text: String): String? {
         val primaryOrder = listOf(
             "분유", "이유식", "기저귀", "수면", "목욕",
@@ -42,8 +35,6 @@ object CommandProcessor {
         }
         val matchedSubtype = subtypeMap.entries.firstOrNull { text.contains(it.key) }?.value
 
-        // "10분전", "1시간전" 같은 시점 보정 인식. 이게 있으면 ml 값과 헷갈리지 않도록
-        // 먼저 떼어내고 나머지 텍스트에서 ml 값을 찾는다.
         val timeOffsetRegex = Regex("""(\d+)\s*(분|시간)\s*전""")
         val timeOffsetMatch = timeOffsetRegex.find(text)
         val timeOffsetMinutes = timeOffsetMatch?.let { m ->
@@ -66,8 +57,6 @@ object CommandProcessor {
         launchIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(launchIntent)
 
-        // 값/하위옵션/시간보정 중 하나라도 지정됐을 때만 상세 화면에 들어감.
-        // 아무것도 지정 안 됐으면(예: "목욕 기록해줘") 아이콘 탭만으로 끝냄.
         val needsDetail = matchedSubtype != null || value != null || timeOffsetMinutes != null
 
         PendingActionQueue.push(ActionStep.ClickText(matchedAction))
@@ -86,8 +75,8 @@ object CommandProcessor {
                 PendingActionQueue.push(ActionStep.ClickNumericField)
                 PendingActionQueue.push(ActionStep.InputNumber(value))
             }
-            PendingActionQueue.push(ActionStep.ClickText("저장"))
         }
+        PendingActionQueue.push(ActionStep.ClickText("저장"))
 
         return "\"$matchedAction" +
             (matchedSubtype?.let { " $it" } ?: "") +
@@ -95,10 +84,6 @@ object CommandProcessor {
             (timeOffsetMinutes?.let { " ${it}분전" } ?: "") + "\" 기록을 시도합니다..."
     }
 
-    /**
-     * 시간 보정 화면 상단의 "-1H", "-10분", "-1분" 버튼을 몇 번 눌러야 목표 분만큼
-     * 뒤로 뺄 수 있는지 계산. 예: 70분 -> ["-1H", "-10분"], 15분 -> ["-10분","-1분"x5]
-     */
     private fun clicksForOffsetMinutes(totalMinutes: Int): List<String> {
         var remaining = totalMinutes
         val clicks = mutableListOf<String>()
