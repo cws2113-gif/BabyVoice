@@ -16,10 +16,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
-/**
- * 빅스비로 "OO 실행해줘" 라고 부르면 바로 뜨는 화면.
- * 앱 목록/홈 화면에는 "아기 기록"이라는 별도 아이콘으로 보임 (AndroidManifest 참고).
- */
 class QuickListenActivity : AppCompatActivity() {
 
     private lateinit var speechRecognizer: SpeechRecognizer
@@ -47,13 +43,28 @@ class QuickListenActivity : AppCompatActivity() {
             != PackageManager.PERMISSION_GRANTED
         ) {
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 2)
-            Toast.makeText(this, "마이크 권한을 먼저 허용해주세요", Toast.LENGTH_SHORT).show()
-            finish()
             return
         }
 
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
         startListening()
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 2) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
+                startListening()
+            } else {
+                Toast.makeText(this, "마이크 권한이 필요해요", Toast.LENGTH_SHORT).show()
+                finish()
+            }
+        }
     }
 
     private fun startListening() {
@@ -100,7 +111,9 @@ class QuickListenActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
-        speechRecognizer.destroy()
+        if (::speechRecognizer.isInitialized) {
+            speechRecognizer.destroy()
+        }
         super.onDestroy()
     }
 }
