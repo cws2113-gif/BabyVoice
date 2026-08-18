@@ -1,49 +1,63 @@
 package com.wonseok.babyvoice
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
-import android.provider.Settings
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
-import android.widget.Button
+import android.view.WindowManager
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 
-class MainActivity : AppCompatActivity() {
+/**
+ * 빅스비로 "OO 실행해줘" 라고 부르면 바로 뜨는 화면.
+ * 앱 목록/홈 화면에는 "아기 기록"이라는 별도 아이콘으로 보임 (AndroidManifest 참고).
+ */
+class QuickListenActivity : AppCompatActivity() {
 
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var statusText: TextView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
 
-        statusText = findViewById(R.id.statusText)
-        val micButton: Button = findViewById(R.id.micButton)
-        val settingsButton: Button = findViewById(R.id.openAccessibilitySettings)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON or
+                    WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+            )
+        }
+
+        setContentView(R.layout.activity_quick_listen)
+        statusText = findViewById(R.id.quickStatusText)
 
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
             != PackageManager.PERMISSION_GRANTED
         ) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 1)
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.RECORD_AUDIO), 2)
+            Toast.makeText(this, "마이크 권한을 먼저 허용해주세요", Toast.LENGTH_SHORT).show()
+            finish()
+            return
         }
 
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
-
-        micButton.setOnClickListener { startListening() }
-
-        settingsButton.setOnClickListener {
-            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-        }
+        startListening()
     }
 
     private fun startListening() {
-        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+        val intent = android.content.Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR")
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
@@ -53,18 +67,22 @@ class MainActivity : AppCompatActivity() {
             override fun onResults(results: Bundle) {
                 val list = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 val text = list?.firstOrNull() ?: ""
-                statusText.text = "인식됨: $text"
-                val resultMessage = CommandProcessor.process(this@MainActivity, text)
+                statusText.text = text
+                val resultMessage = CommandProcessor.process(this@QuickListenActivity, text)
                 if (resultMessage != null) {
                     statusText.text = resultMessage
                 }
+                closeAfterDelay()
             }
 
             override fun onError(error: Int) {
-                statusText.text = "인식 실패 (오류 코드 $error)"
+                statusText.text = "인식 실패"
+                closeAfterDelay()
             }
 
-            override fun onReadyForSpeech(params: Bundle?) {}
+            override fun onReadyForSpeech(params: Bundle?) {
+                statusText.text = "듣는 중..."
+            }
             override fun onBeginningOfSpeech() {}
             override fun onRmsChanged(rmsdB: Float) {}
             override fun onBufferReceived(buffer: ByteArray?) {}
@@ -73,8 +91,12 @@ class MainActivity : AppCompatActivity() {
             override fun onEvent(eventType: Int, params: Bundle?) {}
         })
 
-        statusText.text = "듣는 중..."
+        statusText.text = "..."
         speechRecognizer.startListening(intent)
+    }
+
+    private fun closeAfterDelay() {
+        Handler(Looper.getMainLooper()).postDelayed({ finish() }, 1500)
     }
 
     override fun onDestroy() {

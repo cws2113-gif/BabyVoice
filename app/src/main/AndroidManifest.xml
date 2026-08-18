@@ -18,6 +18,20 @@
             </intent-filter>
         </activity>
 
+        <!-- 빅스비가 "아기 기록 실행해줘" 로 바로 열 수 있도록 별도 아이콘으로 노출.
+             android:label이 곧 빅스비 음성 명령에 쓰이는 앱 이름이 됨. -->
+        <activity
+            android:name=".QuickListenActivity"
+            android:label="아기 기록"
+            android:theme="@style/Theme.Material3.DayNight.NoActionBar"
+            android:exported="true"
+            android:excludeFromRecents="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
         <!-- 접근성 서비스: 베이비타임 화면을 읽고 대신 눌러주는 핵심 컴포넌트 -->
         <service
             android:name=".BabyTimeAccessibilityService"
