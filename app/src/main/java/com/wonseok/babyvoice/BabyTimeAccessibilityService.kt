@@ -15,6 +15,110 @@ class BabyTimeAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (!PendingActionQueue.hasNext()) return
+        handler.removeCallbacksAndMessages(null)
+        handler.postDelayed({ tryExecuteNext() }, 300)
+    }
+
+    private fun tryExecuteNext() {
+        val step = PendingActionQueue.poll() ?: return
+        val root = rootInActiveWindow
+
+        if (root == null) {
+            retryLater(step)
+            return
+        }
+
+        val success = when (step) {
+            is ActionStep.ClickText -> clickNodeWithText(root, step.text)
+            is ActionStep.InputNumber -> inputNumberIntoFirstEditText(root, step.value)
+            is ActionStep.ClickNumericField -> clickFirstNumericField(root)
+            is ActionStep.ClickMostRecentEntry -> clickSecondTopmostWithText(root, step.category)
+            is ActionStep.DismissKeyboard -> dismissKeyboardIfVisible()
+        }
+
+        if (!success) {
+            retryLater(step)
+        } else {
+            retryCount = 0
+            Log.d("BabyVoice", "단계 성공: $step")
+        }
+    }
+
+    private fun retryLater(step: ActionStep) {
+        retryCount++
+        if (retryCount > maxRetries) {
+            Log.w("BabyVoice", "요소를 찾지 못해 포기: $step")
+            retryCount = 0
+            PendingActionQueue.clear()
+            return
+        }
+        PendingActionQueue.push(step)
+        handler.postDelayed({ tryExecuteNext() }, 500)
+    }
+
+    private fun clickNodeWithText(root: AccessibilityNodeInfo, text: String): Boolean {
+        val nodes = root.findAccessibilityNodeInfosByText(text) ?: return false
+
+        var bestNode: AccessibilityNodeInfo? = null
+        var bestTop = Int.MAX_VALUE
+        val bounds = android.graphics.Rect()
+
+        for (node in nodes) {
+            val clickable = findClickableSelfOrParent(node) ?: continue
+            clickable.getBoundsInScreen(bounds)
+            if (bounds.top < bestTop) {
+                bestTop = bounds.top
+                bestNode = clickable
+            }
+        }
+
+        return bestNode?.performAction(AccessibilityNodeInfo.ACTION_CLICK) ?: false
+    }
+
+    private fun findClickableSelfOrParent(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
+        var current: AccessibilityNodeInfo? = node
+        var depth = 0
+        while (current != null && depth < 5) {
+            if (current.isClickable) return current
+            current = current.parent
+            depth++
+        }
+        return null
+    }
+
+    private fun clickFirstNumericField(root: AccessibilityNodeInfo): Boolean {
+        val numericRegex = Regex("""^\d+\s*(ml)?$""")
+        val target = findNodeMatching(root) { node ->
+            val t = node.text?.toString()?.trim() ?: return@findNodeMatching false
+            numericRegex.matches(t)
+        } ?: return false
+
+        val clickable = findClickableSelfOrParent(target) ?: return false
+        return clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+    }
+
+    private fun findNodeMatching(
+
+cd ~/BabyVoice
+cat > app/src/main/java/com/wonseok/babyvoice/BabyTimeAccessibilityService.kt << 'EOF'
+package com.wonseok.babyvoice
+
+import android.accessibilityservice.AccessibilityService
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
+import android.view.accessibility.AccessibilityEvent
+import android.view.accessibility.AccessibilityNodeInfo
+
+class BabyTimeAccessibilityService : AccessibilityService() {
+
+    private val handler = Handler(Looper.getMainLooper())
+    private var retryCount = 0
+    private val maxRetries = 10
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (!PendingActionQueue.hasNext()) return
+        handler.removeCallbacksAndMessages(null)
         handler.postDelayed({ tryExecuteNext() }, 300)
     }
 
