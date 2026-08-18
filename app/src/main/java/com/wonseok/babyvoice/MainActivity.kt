@@ -63,7 +63,8 @@ class MainActivity : AppCompatActivity() {
         if (!::speechRecognizer.isInitialized) {
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this)
         }
-        startListening()
+        statusText.text = "준비 중..."
+        Handler(Looper.getMainLooper()).postDelayed({ startListening() }, 400)
     }
 
     override fun onRequestPermissionsResult(
@@ -85,6 +86,9 @@ class MainActivity : AppCompatActivity() {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR")
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500)
+            putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_MINIMUM_LENGTH_MILLIS, 15000)
         }
 
         speechRecognizer.setRecognitionListener(object : RecognitionListener {
