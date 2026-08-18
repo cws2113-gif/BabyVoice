@@ -87,7 +87,7 @@ class BabyTimeAccessibilityService : AccessibilityService() {
     }
 
     private fun clickFirstNumericField(root: AccessibilityNodeInfo): Boolean {
-        val numericRegex = Regex("^\\d+\\s*(ml)?$")
+        val numericRegex = Regex("^\\d+(\\.\\d+)?\\s*(ml|g|℃|°C)$")
         val target = findNodeMatching(root) { node ->
             val t = node.text?.toString()?.trim()
             t != null && numericRegex.matches(t)
