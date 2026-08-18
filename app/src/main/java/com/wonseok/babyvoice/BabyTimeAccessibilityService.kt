@@ -6,9 +6,6 @@ import android.os.Looper
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class BabyTimeAccessibilityService : AccessibilityService() {
 
@@ -34,7 +31,7 @@ class BabyTimeAccessibilityService : AccessibilityService() {
             is ActionStep.ClickText -> clickNodeWithText(root, step.text)
             is ActionStep.InputNumber -> inputNumberIntoFirstEditText(root, step.value)
             is ActionStep.ClickNumericField -> clickFirstNumericField(root)
-            is ActionStep.ClickMostRecentEntry -> clickMostRecentEntry(root)
+            is ActionStep.ClickMostRecentEntry -> clickSecondTopmostWithText(root, step.category)
         }
 
         if (!success) {
@@ -57,11 +54,6 @@ class BabyTimeAccessibilityService : AccessibilityService() {
         handler.postDelayed({ tryExecuteNext() }, 500)
     }
 
-    /**
-     * 화면에서 지정한 텍스트를 포함하는 클릭 가능한 노드를 찾아 클릭.
-     * 같은 텍스트가 여러 곳에 있을 수 있어서(예: "목욕" = 상단 아이콘 + 아래 기록 리스트의
-     * 과거 항목들), 그중 화면에서 가장 위쪽(y좌표가 가장 작은)에 있는 걸 선택한다.
-     */
     private fun clickNodeWithText(root: AccessibilityNodeInfo, text: String): Boolean {
         val nodes = root.findAccessibilityNodeInfosByText(text) ?: return false
 
@@ -116,10 +108,21 @@ class BabyTimeAccessibilityService : AccessibilityService() {
         return null
     }
 
-    private fun clickMostRecentEntry(root: AccessibilityNodeInfo): Boolean {
-        val timeFormat = SimpleDateFormat("hh:mm a", Locale.US)
-        val timeText = timeFormat.format(Date())
-        return clickNodeWithText(root, timeText)
+    private fun clickSecondTopmostWithText(root: AccessibilityNodeInfo, category: String): Boolean {
+        val nodes = root.findAccessibilityNodeInfosByText(category) ?: return false
+
+        val candidates = mutableListOf<Pair<Int, AccessibilityNodeInfo>>()
+        val bounds = android.graphics.Rect()
+        for (node in nodes) {
+            val clickable = findClickableSelfOrParent(node) ?: continue
+            clickable.getBoundsInScreen(bounds)
+            candidates.add(bounds.top to clickable)
+        }
+
+        if (candidates.size < 2) return false
+
+        val secondTopmost = candidates.sortedBy { it.first }[1]
+        return secondTopmost.second.performAction(AccessibilityNodeInfo.ACTION_CLICK)
     }
 
     private fun inputNumberIntoFirstEditText(root: AccessibilityNodeInfo, value: String): Boolean {

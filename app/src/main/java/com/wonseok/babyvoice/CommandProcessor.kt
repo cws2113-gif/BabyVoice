@@ -62,7 +62,7 @@ object CommandProcessor {
         PendingActionQueue.push(ActionStep.ClickText(matchedAction))
 
         if (needsDetail) {
-            PendingActionQueue.push(ActionStep.ClickMostRecentEntry)
+            PendingActionQueue.push(ActionStep.ClickMostRecentEntry(matchedAction))
             if (timeOffsetMinutes != null) {
                 for (buttonLabel in clicksForOffsetMinutes(timeOffsetMinutes)) {
                     PendingActionQueue.push(ActionStep.ClickText(buttonLabel))
