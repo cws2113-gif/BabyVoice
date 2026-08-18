@@ -44,7 +44,7 @@ class BabyTimeAccessibilityService : AccessibilityService() {
         } else {
             retryCount = 0
             Log.d("BabyVoice", "step ok: $step")
-            if (PendingActionQueue.hasNext()) {
+            if (step is ActionStep.DismissKeyboard && PendingActionQueue.hasNext()) {
                 handler.postDelayed({ tryExecuteNext() }, 300)
             }
         }
