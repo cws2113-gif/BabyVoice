@@ -22,6 +22,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var speechRecognizer: SpeechRecognizer
     private lateinit var statusText: TextView
+    private var hasHandledResult = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,6 +83,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startListening() {
+        hasHandledResult = false
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ko-KR")
@@ -90,6 +92,10 @@ class MainActivity : AppCompatActivity() {
 
         speechRecognizer.setRecognitionListener(object : RecognitionListener {
             override fun onResults(results: Bundle) {
+                if (hasHandledResult) return
+                hasHandledResult = true
+                speechRecognizer.stopListening()
+
                 val list = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                 val text = list?.firstOrNull() ?: ""
                 statusText.text = text
@@ -101,7 +107,9 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onError(error: Int) {
-                statusText.text = "인식 실패 (오류 코드 $error)"
+                if (hasHandledResult) return
+                hasHandledResult = true
+                statusText.text = "일식 실패 (오른 ���드 $error)"
                 closeAfterDelay()
             }
 
